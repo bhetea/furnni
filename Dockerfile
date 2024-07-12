@@ -15,6 +15,9 @@ ARG PHP_EXTS
 ARG PHP_PECL_EXTS
 ARG ENV
 
+# Set the build argument as an environment variable
+ENV APP_ENV=${APP_ENV}
+
 # Set the working directory in the container (Contains the composer.json file)
 WORKDIR /var/www/html/
 
@@ -39,7 +42,9 @@ RUN curl -sL https://deb.nodesource.com/setup_current.x | bash -
 RUN apt-get install -y nodejs
 
 # Clean up apt-get cache
-RUN apt-get clean
+RUN if [ "$APP_ENV" != "local" ]; then \
+    apt-get clean; \
+    fi
 
 # Install Composer (PHP package manager)
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -76,16 +81,11 @@ RUN php artisan event:clear
 RUN php artisan route:clear
 RUN php artisan view:clear
 
+RUN if [ "$APP_ENV" = "local" ]; then \
+    groupadd --force -g $WWWGROUP sail; \
+    useradd -ms /bin/bash --no-user-group -g $WWWGROUP -u 1337 sail; \
+    fi
+
 # Setting file permissions to run Laravel
 RUN chown -R www-data:www-data /var/www/html/
 
-# Copy entrypoint script
-# COPY entrypoint/entrypoint.sh /usr/local/bin/entrypoint.sh
-# COPY entrypoint/wait-for-it.sh /usr/local/bin/wait-for-it.sh
-
-# Ensure Entrypoint is executable
-# RUN chmod +x /usr/local/bin/entrypoint.sh
-# RUN chmod +x /usr/local/bin/wait-for-it.sh
-
-# Set entrypoint script as the entry point
-# ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
